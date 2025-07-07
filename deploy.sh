@@ -4,7 +4,7 @@ set -e
 
 # Check if country parameter is provided
 if [ -z "$1" ]; then
-    echo "Usage: $0 <country> [instance_size]"
+    echo "Usage: $0 <country> [instance_size] [dns_provider]"
     echo ""
     echo "Available countries:"
     echo "  uk        - United Kingdom (London)"
@@ -23,15 +23,22 @@ if [ -z "$1" ]; then
     echo "  micro  - $5.00/month (1GB RAM, 1 vCPU)"
     echo "  small  - $10.00/month (2GB RAM, 1 vCPU)"
     echo ""
+    echo "DNS providers (optional, defaults to none):"
+    echo "  route53   - AWS Route53 (requires ROUTE53_HOSTED_ZONE_ID)"
+    echo "  dnsimple  - DNSimple (requires DNSIMPLE_TOKEN and DNSIMPLE_ACCOUNT_ID)"
+    echo "  none      - No DNS management"
+    echo ""
     echo "Examples:"
     echo "  $0 uk"
     echo "  $0 us-east micro"
-    echo "  $0 jp small"
+    echo "  $0 jp small route53"
+    echo "  $0 de micro dnsimple"
     exit 1
 fi
 
 COUNTRY="$1"
 INSTANCE_SIZE="${2:-nano}"
+DNS_PROVIDER="${3:-none}"
 
 # Map instance size to bundle ID
 case "$INSTANCE_SIZE" in
@@ -39,6 +46,12 @@ case "$INSTANCE_SIZE" in
     micro) BUNDLE_ID="micro_2_0" ;;
     small) BUNDLE_ID="small_2_0" ;;
     *)     echo "❌ Invalid instance size. Use: nano, micro, or small"; exit 1 ;;
+esac
+
+# Validate DNS provider
+case "$DNS_PROVIDER" in
+    route53|dnsimple|none) ;;
+    *)     echo "❌ Invalid DNS provider. Use: route53, dnsimple, or none"; exit 1 ;;
 esac
 
 # Map country to AWS region configuration
@@ -104,6 +117,7 @@ esac
 
 echo "🚀 Deploying VPN server in $COUNTRY_NAME ($REGION)"
 echo "💾 Instance size: $INSTANCE_SIZE ($BUNDLE_ID)"
+echo "🌐 DNS provider: $DNS_PROVIDER"
 
 # Check prerequisites
 if [ ! -f ~/.ssh/id_rsa.pub ]; then
@@ -120,6 +134,21 @@ if ! aws sts get-caller-identity > /dev/null 2>&1; then
     exit 1
 fi
 
+# Validate DNS provider credentials
+if [ "$DNS_PROVIDER" = "route53" ]; then
+    if [ -z "$ROUTE53_HOSTED_ZONE_ID" ]; then
+        echo "❌ Route53 selected but ROUTE53_HOSTED_ZONE_ID not set"
+        echo "Please set ROUTE53_HOSTED_ZONE_ID environment variable"
+        exit 1
+    fi
+elif [ "$DNS_PROVIDER" = "dnsimple" ]; then
+    if [ -z "$DNSIMPLE_TOKEN" ] || [ -z "$DNSIMPLE_ACCOUNT_ID" ]; then
+        echo "❌ DNSimple selected but credentials not found"
+        echo "Please set DNSIMPLE_TOKEN and DNSIMPLE_ACCOUNT_ID environment variables"
+        exit 1
+    fi
+fi
+
 # Create terraform.tfvars file
 cat > terraform.tfvars << EOF
 country_config = {
@@ -132,8 +161,12 @@ country_config = {
 instance_bundle = "$BUNDLE_ID"
 
 dns_config = {
-  domain      = "your-domain.com"
-  record_name = "vpn-$COUNTRY"
+  provider           = "$DNS_PROVIDER"
+  domain             = "${DNS_DOMAIN:-your-domain.com}"
+  record_name        = "${DNS_RECORD_NAME:-vpn-$COUNTRY}"
+  hosted_zone_id     = "${ROUTE53_HOSTED_ZONE_ID:-}"
+  dnsimple_token     = "${DNSIMPLE_TOKEN:-}"
+  dnsimple_account_id = "${DNSIMPLE_ACCOUNT_ID:-}"
 }
 EOF
 
@@ -157,6 +190,14 @@ SERVER_IP=$(terraform output -raw vpn_server_ip)
 echo "🌐 VPN Server IP: $SERVER_IP"
 echo "📍 Location: $COUNTRY_NAME ($REGION)"
 
+# Get DNS information if configured
+if [ "$DNS_PROVIDER" != "none" ]; then
+    DNS_RECORD=$(terraform output -raw dns_record_name 2>/dev/null || echo "")
+    if [ -n "$DNS_RECORD" ]; then
+        echo "🌍 DNS Record: $DNS_RECORD"
+    fi
+fi
+
 # Wait for SSH access
 echo "🔑 Waiting for SSH access..."
 until ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no ubuntu@$SERVER_IP 'exit' 2>/dev/null; do
@@ -176,13 +217,22 @@ ssh -o StrictHostKeyChecking=no ubuntu@$SERVER_IP 'sudo systemctl status openvpn
 echo "📥 Downloading client configuration..."
 ssh -o StrictHostKeyChecking=no ubuntu@$SERVER_IP 'sudo cat /root/client-configs/files/client.ovpn' > "client-$COUNTRY.ovpn"
 
-# Update client config with server IP
-sed -i.bak "s/remote YOUR_VPN_SERVER_IP 1194/remote $SERVER_IP 1194/" "client-$COUNTRY.ovpn"
+# Update client config with server IP or DNS
+if [ "$DNS_PROVIDER" != "none" ] && [ -n "$DNS_RECORD" ]; then
+    sed -i.bak "s/remote YOUR_VPN_SERVER_IP 1194/remote $DNS_RECORD 1194/" "client-$COUNTRY.ovpn"
+    echo "📝 Client configured to use DNS: $DNS_RECORD"
+else
+    sed -i.bak "s/remote YOUR_VPN_SERVER_IP 1194/remote $SERVER_IP 1194/" "client-$COUNTRY.ovpn"
+    echo "📝 Client configured to use IP: $SERVER_IP"
+fi
 
 echo "✅ VPN setup complete!"
 echo ""
 echo "📱 Client configuration: client-$COUNTRY.ovpn"
 echo "🌍 Server IP: $SERVER_IP"
+if [ "$DNS_PROVIDER" != "none" ] && [ -n "$DNS_RECORD" ]; then
+    echo "🌐 DNS Record: $DNS_RECORD"
+fi
 echo "📍 Location: $COUNTRY_NAME"
 echo "💰 Estimated cost: \$3.50-10/month (depending on size)"
 echo ""

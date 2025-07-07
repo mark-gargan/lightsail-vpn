@@ -21,12 +21,25 @@ variable "country_config" {
 variable "dns_config" {
   description = "DNS configuration for the VPN"
   type = object({
-    domain      = string
-    record_name = string
+    provider           = string
+    domain             = string
+    record_name        = string
+    hosted_zone_id     = optional(string)
+    dnsimple_token     = optional(string)
+    dnsimple_account_id = optional(string)
   })
   default = {
-    domain      = "your-domain.com"
-    record_name = "vpn"
+    provider           = "none"
+    domain             = "your-domain.com"
+    record_name        = "vpn"
+    hosted_zone_id     = ""
+    dnsimple_token     = ""
+    dnsimple_account_id = ""
+  }
+  
+  validation {
+    condition = contains(["none", "route53", "dnsimple"], var.dns_config.provider)
+    error_message = "DNS provider must be 'none', 'route53', or 'dnsimple'."
   }
 }
 
