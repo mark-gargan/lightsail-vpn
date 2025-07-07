@@ -4,11 +4,21 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    dnsimple = {
+      source  = "dnsimple/dnsimple"
+      version = "~> 1.0"
+    }
   }
 }
 
 provider "aws" {
   region = var.country_config.region
+}
+
+# Configure DNSimple provider if selected
+provider "dnsimple" {
+  token      = var.dns_config.provider == "dnsimple" ? var.dns_config.dnsimple_token : null
+  account    = var.dns_config.provider == "dnsimple" ? var.dns_config.dnsimple_account_id : null
 }
 
 # Create Lightsail instance
@@ -67,6 +77,26 @@ resource "aws_lightsail_instance_public_ports" "vpn_ports" {
   }
 }
 
+# Route53 DNS Record (if provider is route53)
+resource "aws_route53_record" "vpn_dns" {
+  count   = var.dns_config.provider == "route53" ? 1 : 0
+  zone_id = var.dns_config.hosted_zone_id
+  name    = var.dns_config.record_name
+  type    = "A"
+  ttl     = 300
+  records = [aws_lightsail_static_ip.vpn_ip.ip_address]
+}
+
+# DNSimple DNS Record (if provider is dnsimple)
+resource "dnsimple_record" "vpn_dns" {
+  count  = var.dns_config.provider == "dnsimple" ? 1 : 0
+  domain = var.dns_config.domain
+  name   = var.dns_config.record_name
+  type   = "A"
+  value  = aws_lightsail_static_ip.vpn_ip.ip_address
+  ttl    = 300
+}
+
 # Output the static IP
 output "vpn_server_ip" {
   value = aws_lightsail_static_ip.vpn_ip.ip_address
@@ -74,4 +104,9 @@ output "vpn_server_ip" {
 
 output "vpn_server_username" {
   value = "ubuntu"
+}
+
+# Output DNS record name if configured
+output "dns_record_name" {
+  value = var.dns_config.provider != "none" ? "${var.dns_config.record_name}.${var.dns_config.domain}" : ""
 }
