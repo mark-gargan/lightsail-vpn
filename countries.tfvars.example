@@ -1,0 +1,90 @@
+# Example configurations for different countries
+
+# United Kingdom
+# country_config = {
+#   region            = "eu-west-2"
+#   availability_zone = "eu-west-2a"
+#   country_code      = "uk"
+#   country_name      = "United Kingdom"
+# }
+
+# United States (East Coast)
+# country_config = {
+#   region            = "us-east-1"
+#   availability_zone = "us-east-1a"
+#   country_code      = "us"
+#   country_name      = "United States"
+# }
+
+# United States (West Coast)
+# country_config = {
+#   region            = "us-west-1"
+#   availability_zone = "us-west-1a"
+#   country_code      = "us"
+#   country_name      = "United States"
+# }
+
+# Germany
+# country_config = {
+#   region            = "eu-central-1"
+#   availability_zone = "eu-central-1a"
+#   country_code      = "de"
+#   country_name      = "Germany"
+# }
+
+# Ireland
+# country_config = {
+#   region            = "eu-west-1"
+#   availability_zone = "eu-west-1a"
+#   country_code      = "ie"
+#   country_name      = "Ireland"
+# }
+
+# Singapore
+# country_config = {
+#   region            = "ap-southeast-1"
+#   availability_zone = "ap-southeast-1a"
+#   country_code      = "sg"
+#   country_name      = "Singapore"
+# }
+
+# Australia
+# country_config = {
+#   region            = "ap-southeast-2"
+#   availability_zone = "ap-southeast-2a"
+#   country_code      = "au"
+#   country_name      = "Australia"
+# }
+
+# Japan
+# country_config = {
+#   region            = "ap-northeast-1"
+#   availability_zone = "ap-northeast-1a"
+#   country_code      = "jp"
+#   country_name      = "Japan"
+# }
+
+# Canada
+# country_config = {
+#   region            = "ca-central-1"
+#   availability_zone = "ca-central-1a"
+#   country_code      = "ca"
+#   country_name      = "Canada"
+# }
+
+# Brazil
+# country_config = {
+#   region            = "sa-east-1"
+#   availability_zone = "sa-east-1a"
+#   country_code      = "br"
+#   country_name      = "Brazil"
+# }
+
+# DNS Configuration (customize for your domain)
+dns_config = {
+  domain      = "your-domain.com"
+  record_name = "vpn"
+}
+
+# Instance size (nano_2_0 = $3.50/month, micro_2_0 = $5/month)
+instance_bundle = "nano_2_0"

@@ -1,0 +1,27 @@
+client
+dev tun
+proto udp
+remote YOUR_VPN_SERVER_IP 1194
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+remote-cert-tls server
+keepalive 10 60
+ping-restart 30
+cipher AES-256-GCM
+auth SHA256
+verb 3
+<ca>
+# CA certificate will be inserted here during deployment
+</ca>
+<cert>
+# Client certificate will be inserted here during deployment
+</cert>
+<key>
+# Client private key will be inserted here during deployment
+</key>
+<tls-auth>
+# TLS authentication key will be inserted here during deployment
+</tls-auth>
+key-direction 1

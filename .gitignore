@@ -1,0 +1,39 @@
+# OpenVPN client configuration files (contain private keys)
+*.ovpn
+!client.ovpn.template
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Terraform variable files
+*.tfvars
+*.tfvars.json
+!countries.tfvars.example
+
+# Terraform local settings
+.terraform/
+.terraform.lock.hcl
+
+# SSH keys
+*.pem
+*.key
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Backup files
+*.bak
+
+# macOS
+.DS_Store
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
